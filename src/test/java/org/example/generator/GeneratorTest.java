@@ -1,5 +1,9 @@
 package org.example.generator;
 
+import org.example.classes.BinaryTreeNode;
+import org.example.classes.Cart;
+import org.example.classes.Example;
+import org.example.classes.Product;
 import org.example.classes.Rectangle;
 import org.example.classes.Shape;
 import org.example.classes.Triangle;
@@ -67,7 +71,6 @@ class GeneratorTest {
             this.next = next;
         }
     }
-
     static class Failing {
         Failing() {
             throw new IllegalStateException("boom");
@@ -220,9 +223,45 @@ class GeneratorTest {
     }
 
     @Test
-    void generatesTemplateClass() {
-        Object r = g.generateValueOfType(Rectangle.class);
-        assertInstanceOf(Rectangle.class, r);
+    void generatesAllTemplateClasses() {
+        assertInstanceOf(Product.class, g.generateValueOfType(Product.class));
+        assertInstanceOf(Example.class, g.generateValueOfType(Example.class));
+        assertInstanceOf(Rectangle.class, g.generateValueOfType(Rectangle.class));
+        assertInstanceOf(Triangle.class, g.generateValueOfType(Triangle.class));
+    }
+
+    @RepeatedTest(20)
+    void generatesBinaryTree() {
+        BinaryTreeNode root = g.generateValueOfType(BinaryTreeNode.class);
+        assertNotNull(root);
+        assertTrue(height(root) <= 10, "tree is too high: " + height(root));
+        assertAllDataPresent(root);
+    }
+
+    @RepeatedTest(10)
+    void generatesCartWithProducts() {
+        Cart cart = g.generateValueOfType(Cart.class);
+        assertNotNull(cart.getItems());
+        assertFalse(cart.getItems().isEmpty());
+        for (Object item : cart.getItems()) {
+            assertInstanceOf(Product.class, item);
+        }
+    }
+
+    private int height(BinaryTreeNode node) {
+        if (node == null) {
+            return 0;
+        }
+        return 1 + Math.max(height(node.getLeft()), height(node.getRight()));
+    }
+
+    private void assertAllDataPresent(BinaryTreeNode node) {
+        if (node == null) {
+            return;
+        }
+        assertNotNull(node.getData());
+        assertAllDataPresent(node.getLeft());
+        assertAllDataPresent(node.getRight());
     }
 
     @Test
@@ -239,6 +278,17 @@ class GeneratorTest {
         Secret s = g.generateValueOfType(Secret.class);
         assertNotNull(s);
         assertTrue(s.value >= 0 && s.value < 100);
+    }
+
+    @RepeatedTest(20)
+    void generatesSelfReferencingChain() {
+        Node n = g.generateValueOfType(Node.class);
+        int length = 0;
+        while (n != null) {
+            length++;
+            n = n.next;
+        }
+        assertTrue(length >= 1 && length <= 10, "chain length: " + length);
     }
 
     @Test
@@ -288,8 +338,9 @@ class GeneratorTest {
     }
 
     @Test
-    void failsForInfiniteRecursion() {
-        assertThrows(GenerationException.class, () -> g.generateValueOfType(Node.class));
+    void failsWhenNestingIsTooDeep() {
+        assertThrows(GenerationException.class,
+                () -> g.generateValueOfType(int[][][][][][][][][][][][].class));
     }
 
     @Test
